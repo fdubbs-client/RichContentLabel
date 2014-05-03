@@ -137,7 +137,7 @@ typedef enum
 	int _position;
 	int _componentIndex;
     BOOL _isClosure;
-    UIImage *img_;    
+    UIImage *img_;
 }
 
 @property (nonatomic, assign) int componentIndex;

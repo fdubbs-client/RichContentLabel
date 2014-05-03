@@ -366,11 +366,13 @@ CGSize MyGetSize(void* refCon) {
             return size;
         }
         
-        UIImage* image = [UIImage imageNamed:src];
+        //UIImage* image = [UIImage imageNamed:src];
+        UIImage* image = [UIImage imageNamed:@"test.png"];
         
         
         if (image) {
             CGSize imageSize = image.size;
+            
             CGFloat ratio = imageSize.width / imageSize.height;
             
             
@@ -394,6 +396,10 @@ CGSize MyGetSize(void* refCon) {
             if (size.width < 1.0) {
                 size.width = 1.0;
             }
+            
+            
+            //size.width = imageSize.width / 2;
+            //size.height = imageSize.height / 2;
             
             nsv = [NSValue valueWithBytes:&size objCType:@encode(CGSize)];
             [imgSizeDict setObject:nsv forKey:src];
@@ -1491,7 +1497,8 @@ CGFloat MyGetWidthCallback( void* refCon ){
                 NSString *tempURL = [RCLabel stripURL:url];
                 if (tempURL) {
                     [component.attributes setObject:tempURL forKey:@"src"];
-                    UIImage  *tempImg = [UIImage imageNamed:tempURL];
+                    //UIImage  *tempImg = [UIImage imageNamed:tempURL];
+                    UIImage  *tempImg = [UIImage imageNamed:@"test.png"];
                     
                     component.img = tempImg;
                     
@@ -1500,14 +1507,20 @@ CGFloat MyGetWidthCallback( void* refCon ){
           
                 
                 if (!isSizeTooSmall) {
+                    // Character to use as recommended by kCTRunDelegateAttributeName documentation.
+                    // use " " will lead to wrong width in CTFramesetterSuggestFrameSizeWithConstraints
+                    unichar objectReplacementChar = 0xFFFC;
+                    NSString * objectReplacementString = [NSString stringWithCharacters:&objectReplacementChar length:1];
                     
                     NSMutableString *tempString = [NSMutableString stringWithString:plainData];
-                    [tempString insertString:@"`" atIndex:position];
+                    [tempString insertString:objectReplacementString atIndex:position];
                         
                                         
                     plainData = [NSString stringWithString:tempString];
                     
                     component.text = [plainData substringWithRange:NSMakeRange(component.position, 1)];
+                    
+                    NSLog(@"component.txt = %@", component.text);
                     component.isClosure = YES;
                     
                     [components addObject:component];
@@ -1783,6 +1796,38 @@ CGFloat MyGetWidthCallback( void* refCon ){
     
 	CFIndex index = CTLineGetStringIndexForPosition(line, location);
 	RTLabelComponent *tempComponent = nil;
+    
+    for (RTLabelComponent *component in self.componentsAndPlainText.imgComponents)
+	{
+		if ((index >= component.position) && (index <= (component.img.size.width + component.position)))
+		{
+			tempComponent = component;
+			
+		}
+	}
+    if (tempComponent) {
+        self.currentImgComponent = tempComponent;
+        [self setNeedsDisplay];
+    }
+    else {
+        for (RTLabelComponent *component in self.componentsAndPlainText.linkComponents)
+        {
+            if ((index >= component.position) && (index <= ([component.text length] + component.position)))
+            {
+                tempComponent = component;
+                
+            }
+        }
+        if (tempComponent) {
+            self.currentLinkComponent = tempComponent;
+            [self setNeedsDisplay];
+        }
+        else {
+            [super touchesBegan:touches withEvent:event];
+        }
+        
+    }
+    /*
 	for (RTLabelComponent *component in self.componentsAndPlainText.linkComponents)
 	{
 		if ((index >= component.position) && (index <= ([component.text length] + component.position)))
@@ -1798,7 +1843,7 @@ CGFloat MyGetWidthCallback( void* refCon ){
     else {
         for (RTLabelComponent *component in self.componentsAndPlainText.imgComponents)
         {
-            if ((index >= component.position) && (index <= ([component.text length] + component.position)))
+            if ((index >= component.position) && (index <= (component.img.size.width * 2 + component.position)))
             {
                 tempComponent = component;
                 
@@ -1813,6 +1858,7 @@ CGFloat MyGetWidthCallback( void* refCon ){
         }
         
     }
+    */
 }
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
 {	
@@ -1830,12 +1876,14 @@ CGFloat MyGetWidthCallback( void* refCon ){
 {	
     [super touchesEnded:touches withEvent:event];
     if (self.currentLinkComponent) {
+        NSLog(@"touch link");
         if ([_delegate respondsToSelector:@selector(rtLabel:didSelectLinkWithURL:)]) {
             [_delegate rtLabel:self didSelectLinkWithURL:[self.currentLinkComponent.attributes objectForKey:@"href"]];
         }
         
     }
     else if(self.currentImgComponent) {
+        NSLog(@"touch image : %@", [self.currentImgComponent.attributes objectForKey:@"src"]);
         if ([_delegate respondsToSelector:@selector(rtLabel:didSelectLinkWithURL:)]) {
             [_delegate rtLabel:self didSelectLinkWithURL:[self.currentImgComponent.attributes objectForKey:@"src"]];
         }
